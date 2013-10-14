@@ -1,0 +1,172 @@
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(12, 11, 10, 5, 4, 3, 2);
+int inbutton = 9;
+int buttonstate = LOW;
+int lastbuttonstate = HIGH;
+int actual;
+int trigpin = A4;
+int echopin = A5;
+int aPinIn = A0;
+int val = 0; 
+float Vout = 0.0;
+float Vin = 4.66; 
+float Rknown = 10000.0; 
+float Runknown = 0.0;
+float U = 0.0;
+float I = 0.0; 
+int backlight = 13;
+int analogPin = 1; 
+int chargePin = 6;      
+int dischargePin = 7;  
+float resistorValue = 1000.0;   
+unsigned long startTime;
+unsigned long elapsedTime;
+float microFarads;              
+float nanoFarads;
+float picoFarads;
+
+void setup(){
+ pinMode(inbutton, INPUT);
+ digitalWrite(inbutton, HIGH);
+ lcd.begin(16, 2);
+ pinMode(backlight, OUTPUT);
+ pinMode(chargePin, OUTPUT);   
+ digitalWrite(chargePin, LOW); 
+ pinMode(trigpin, OUTPUT);
+ pinMode(echopin, INPUT);
+ digitalWrite(backlight, HIGH);
+} 
+
+
+
+void loop()
+{
+    buttonstate = digitalRead(inbutton);
+if (buttonstate == HIGH && buttonstate != lastbuttonstate)
+    {
+      if(actual == 3) actual = 0;
+      else actual++;
+    }
+  lastbuttonstate = buttonstate;
+ 
+  switch(actual)
+  {
+    case 0:
+    range();
+    break;
+
+    case 1:
+    ohm();
+    break;
+
+    case 2:
+    farad();
+    break;
+
+   }
+}
+
+void range() {
+  float duration; 
+  float cm;
+  pinMode(trigpin, OUTPUT);
+  digitalWrite(trigpin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigpin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigpin, LOW);
+
+  pinMode(echopin, INPUT);
+  duration = pulseIn(echopin, HIGH);
+ 
+  cm = microsecondsToCentimeters(duration);
+  
+  if (cm > 500){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Out of Range");
+    delay(500);
+  }
+  
+  else {
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("The object is");
+  lcd.setCursor(0, 1);
+  lcd.print(cm);
+  lcd.print(" cm far");
+  delay(500);
+  }
+ }
+float microsecondsToCentimeters(float microseconds){
+return microseconds / 29 / 2;
+}
+
+ 
+
+void ohm(){
+lcd.clear();
+ val = analogRead(aPinIn);
+ Vout = (Vin/1024.0) * val;
+ U = (Vin - Vout);
+ I = (U/Rknown);
+ Runknown = (Vout/I);
+ lcd.print("Vout: ");
+ lcd.print(Vout);
+lcd.setCursor(0, 1); 
+ lcd.print("R: ");
+ lcd.print(Runknown);
+ delay(1000);
+}
+
+
+ void farad(){
+   digitalWrite(chargePin, HIGH);  
+   startTime = millis();
+   while(analogRead(analogPin) < 648){ 
+   }
+   elapsedTime= millis() - startTime; 
+   microFarads = ((float)elapsedTime / resistorValue) * 1000;
+    
+   if(elapsedTime == 0){
+     lcd.clear();
+     lcd.print("Insert a");
+     lcd.setCursor(0, 1);
+     lcd.print("Capacitor");     
+     delay(1000);
+   }
+   if (microFarads >= 1){
+     lcd.clear();
+     lcd.setCursor(0,0);
+     lcd.print((long)microFarads);   
+     lcd.print("  microFarad");    
+     lcd.setCursor(0,0);
+   }
+   else if (microFarads <= 1){
+
+     nanoFarads = microFarads * 1000.0; 
+     lcd.clear();
+     lcd.setCursor(0,0);                                  
+     lcd.print((long)nanoFarads); 
+     lcd.print("  nanoFarad");  
+     lcd.setCursor(0,0);
+   }
+   if (nanoFarads >= 1){
+     picoFarads = nanoFarads * 1000.0; 
+     lcd.clear();
+     lcd.setCursor(0,0);                                  
+     lcd.print((long)picoFarads);
+     lcd.print("  picoFarad");  
+     lcd.setCursor(0,0);
+   }
+ 
+   digitalWrite(chargePin, LOW);   
+   pinMode(dischargePin, OUTPUT);   
+   digitalWrite(dischargePin, LOW); 
+   while(analogRead(analogPin) > 0){
+                                    
+   }
+   pinMode(dischargePin, INPUT);   
+
+ }
